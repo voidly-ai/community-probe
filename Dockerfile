@@ -19,4 +19,8 @@ RUN pip install --no-cache-dir .
 ENV VOIDLY_CONFIG_DIR=/data/.voidly
 VOLUME ["/data/.voidly"]
 
-ENTRYPOINT ["voidly-probe", "--consent"]
+HEALTHCHECK --interval=60s --timeout=5s --retries=3 \
+  CMD test -f /data/.voidly/node.json || exit 1
+
+ENTRYPOINT ["voidly-probe"]
+CMD ["--consent"]
