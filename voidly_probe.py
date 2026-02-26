@@ -22,10 +22,12 @@ import os
 import sys
 import json
 import time
+import signal
 import socket
 import ssl
 import hmac
 import hashlib
+import uuid
 import urllib.request
 import urllib.error
 import threading
@@ -35,17 +37,45 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
 
 
-__version__ = "1.0.6"
+__version__ = "1.0.11"
+
+# ─── Graceful Shutdown ────────────────────────────────────────────────────────
+
+_shutdown_requested = False
+
+
+def _handle_shutdown(signum: int, frame: Any) -> None:
+    """Handle SIGTERM/SIGHUP for graceful Docker shutdown."""
+    global _shutdown_requested
+    sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+    print(f"\n  Received {sig_name} — shutting down gracefully...")
+    _shutdown_requested = True
+
+
+signal.signal(signal.SIGTERM, _handle_shutdown)
+signal.signal(signal.SIGHUP, _handle_shutdown)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 API_URL = os.environ.get("VOIDLY_API_URL", "https://api.voidly.ai")
 if not API_URL.startswith("https://") and "localhost" not in API_URL and "127.0.0.1" not in API_URL:
-    print(f"  WARNING: API URL uses HTTP ({API_URL}) — tokens will be sent in cleartext!")
-PROBE_INTERVAL = int(os.environ.get("VOIDLY_PROBE_INTERVAL", "900"))  # 15 minutes
-PROBE_TIMEOUT = int(os.environ.get("VOIDLY_PROBE_TIMEOUT", "10"))     # 10 seconds per request
-PROBE_BATCH_SIZE = int(os.environ.get("VOIDLY_BATCH_SIZE", "20"))     # Domains per cycle
-USER_AGENT = f"VoidlyProbe/{__version__} (Python/{sys.version_info.major}.{sys.version_info.minor})"
+    print(f"  ERROR: API URL must use HTTPS for security. Got: {API_URL}")
+    sys.exit(1)
+def _safe_int_env(name: str, default: int) -> int:
+    """Parse an integer env var with fallback + warning on bad values."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"  WARNING: {name}={raw!r} is not a valid integer, using default {default}")
+        return default
+
+PROBE_INTERVAL = _safe_int_env("VOIDLY_PROBE_INTERVAL", 900)   # 15 minutes
+PROBE_TIMEOUT = _safe_int_env("VOIDLY_PROBE_TIMEOUT", 10)      # 10 seconds per request
+PROBE_BATCH_SIZE = _safe_int_env("VOIDLY_BATCH_SIZE", 20)      # Domains per cycle
+USER_AGENT = f"Mozilla/5.0 (compatible; VoidlyProbe/{__version__}; +https://voidly.ai/probes)"
 CONFIG_DIR = Path(os.environ.get("VOIDLY_CONFIG_DIR", Path.home() / ".voidly"))
 
 # ─── Probe Targets (62 domains) ──────────────────────────────────────────────
@@ -220,8 +250,13 @@ def load_config() -> Optional[Dict[str, Any]]:
             # Validate required fields
             if not isinstance(config, dict):
                 return None
-            if not config.get("nodeId") or not config.get("nodeToken"):
-                print("  Warning: config missing nodeId or nodeToken, re-registering...")
+            node_id = config.get("nodeId", "")
+            node_token = config.get("nodeToken", "")
+            if not isinstance(node_id, str) or not (8 <= len(node_id) <= 64):
+                print("  Warning: invalid nodeId in config, re-registering...")
+                return None
+            if not isinstance(node_token, str) or not (16 <= len(node_token) <= 256):
+                print("  Warning: invalid nodeToken in config, re-registering...")
                 return None
             # Ensure country field exists (older configs may lack it)
             if not config.get("country"):
@@ -243,7 +278,8 @@ def save_config(config: Dict[str, Any]) -> None:
         try:
             tmp_path.chmod(0o600)
         except OSError:
-            pass
+            print(f"  WARNING: Could not set file permissions on token file.")
+            print(f"  Please manually secure: {config_path}")
         tmp_path.rename(config_path)
     except Exception:
         # Fallback: direct write
@@ -251,11 +287,24 @@ def save_config(config: Dict[str, Any]) -> None:
         try:
             config_path.chmod(0o600)
         except OSError:
-            pass
+            print(f"  WARNING: Could not set file permissions on token file.")
+            print(f"  Please manually secure: {config_path}")
 
 
 def detect_location() -> Dict[str, str]:
-    """Auto-detect country and city using a public GeoIP API."""
+    """Auto-detect country and city using a public GeoIP API.
+
+    Set VOIDLY_COUNTRY (and optionally VOIDLY_CITY) to skip ipinfo.io entirely.
+    """
+    # Manual override — skip ipinfo.io for privacy-sensitive users
+    manual_country = os.environ.get("VOIDLY_COUNTRY")
+    if manual_country:
+        return {
+            "country": manual_country.upper()[:2],
+            "city": os.environ.get("VOIDLY_CITY", "Unknown"),
+            "region": "",
+        }
+
     try:
         req = urllib.request.Request(
             "https://ipinfo.io/json",
@@ -294,12 +343,17 @@ def register_node() -> Dict[str, Any]:
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.loads(response.read().decode("utf-8"))
-            if "nodeId" not in data or "nodeToken" not in data:
-                print(f"  Registration failed: unexpected API response (missing nodeId/nodeToken)")
+            node_id = data.get("nodeId", "")
+            node_token = data.get("nodeToken", "")
+            if not isinstance(node_id, str) or not (8 <= len(node_id) <= 64):
+                print("  Registration failed: invalid nodeId format from API")
+                sys.exit(1)
+            if not isinstance(node_token, str) or not (16 <= len(node_token) <= 256):
+                print("  Registration failed: invalid nodeToken format from API")
                 sys.exit(1)
             config = {
-                "nodeId": data["nodeId"],
-                "nodeToken": data["nodeToken"],
+                "nodeId": node_id,
+                "nodeToken": node_token,
                 "country": location["country"],
                 "city": location["city"],
                 "registeredAt": datetime.now(timezone.utc).isoformat(),
@@ -308,7 +362,7 @@ def register_node() -> Dict[str, Any]:
             save_config(config)
             return config
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="ignore")
+        body = e.read().decode("utf-8", errors="ignore")[:200]
         print(f"  Registration failed: HTTP {e.code} — {body}")
         sys.exit(1)
     except Exception as e:
@@ -460,7 +514,9 @@ def probe_doh_dns(domain: str, timeout: int = 5) -> Optional[Dict[str, Any]]:
             return None
 
         if not system_ips:
-            poisoned = True
+            # System DNS failed entirely — could be transient outage, not poisoning
+            poisoned = None
+            return {"poisoned": poisoned, "system_ips": system_ips, "doh_ips": doh_ips}
         elif not doh_ips:
             return None
         elif set(system_ips) & set(doh_ips):
@@ -700,7 +756,7 @@ def get_probe_batch() -> List[Dict[str, Any]]:
 # ─── Result Reporting ─────────────────────────────────────────────────────────
 
 def _cache_results(payload: Dict[str, Any]) -> None:
-    """Save failed results to disk for retry next cycle (max 5 cached payloads)."""
+    """Save failed results to disk for retry. Age-based eviction (24h max)."""
     cache_path = CONFIG_DIR / "pending_results.json"
     try:
         pending: List[Dict[str, Any]] = []
@@ -711,10 +767,16 @@ def _cache_results(payload: Dict[str, Any]) -> None:
                     pending = loaded
             except (json.JSONDecodeError, IOError):
                 pass
-        if len(pending) < 5:
-            pending.append(payload)
-            cache_path.write_text(json.dumps(pending))
-            print(f"  Cached {len(payload.get('results', []))} results for retry next cycle")
+        # Evict entries older than 24 hours
+        cutoff = (datetime.now(timezone.utc).timestamp()) - 86400
+        pending = [
+            p for p in pending
+            if p.get("_cached_at", cutoff + 1) > cutoff
+        ]
+        payload["_cached_at"] = datetime.now(timezone.utc).timestamp()
+        pending.append(payload)
+        cache_path.write_text(json.dumps(pending))
+        print(f"  Cached {len(payload.get('results', []))} results for retry ({len(pending)} pending)")
     except Exception as e:
         print(f"  Failed to cache results: {e}")
 
@@ -778,6 +840,7 @@ def report_results(
         "nodeCountry": node_country,
         "nodeType": "community",
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "submissionId": uuid.uuid4().hex,  # 32-char nonce for replay prevention
         "results": results,
     }
 
@@ -850,8 +913,22 @@ def run_probe_cycle(config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _check_connectivity() -> bool:
+    """Quick health check to verify API is reachable."""
+    try:
+        req = urllib.request.Request(
+            f"{API_URL}/health",
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
 def probe_loop(config: Dict[str, Any]) -> None:
-    """Main probe loop — runs forever."""
+    """Main probe loop — runs until shutdown signal."""
+    global _shutdown_requested
     node_id = config["nodeId"]
     node_country = config["country"]
 
@@ -863,11 +940,24 @@ def probe_loop(config: Dict[str, Any]) -> None:
     print(f"  Reporting to: {API_URL}")
     print(f"{'='*60}\n")
 
+    # Connectivity check before starting
+    print("  Checking API connectivity...")
+    for attempt in range(3):
+        if _check_connectivity():
+            print("  API reachable. Starting probe loop.\n")
+            break
+        wait = (attempt + 1) * 10
+        print(f"  API unreachable (attempt {attempt + 1}/3). Retrying in {wait}s...")
+        time.sleep(wait)
+    else:
+        print("  WARNING: API unreachable — starting anyway (results will be cached)\n")
+
     cycle = 0
     session_total = 0
+    consecutive_failures = 0
     session_start = datetime.now(timezone.utc)
 
-    while True:
+    while not _shutdown_requested:
         cycle += 1
         timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
         print(f"[{timestamp}] Cycle {cycle}: probing {PROBE_BATCH_SIZE}/{len(PROBE_TARGETS)} domains...")
@@ -885,10 +975,40 @@ def probe_loop(config: Dict[str, Any]) -> None:
                 f"{stats['errors']} errors — {status} "
                 f"(session: {session_total} probes, {elapsed_str})"
             )
+            # Track consecutive report failures for backoff
+            if stats["reported"]:
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
         except Exception as e:
             print(f"  Error in probe cycle: {e}")
+            consecutive_failures += 1
 
-        time.sleep(PROBE_INTERVAL)
+        if _shutdown_requested:
+            break
+
+        # Exponential backoff on consecutive failures (5min, 15min, 60min max)
+        if consecutive_failures >= 3:
+            backoff = min(3600, 300 * (2 ** (consecutive_failures - 3)))
+            print(f"  {consecutive_failures} consecutive failures — backing off {backoff}s")
+            _interruptible_sleep(backoff)
+        else:
+            _interruptible_sleep(PROBE_INTERVAL)
+
+    # Graceful shutdown: flush any pending results
+    print("\n  Flushing pending results before exit...")
+    try:
+        flush_pending_results(config["nodeId"], config["country"], config["nodeToken"])
+    except Exception:
+        pass
+    print("  Probe stopped. Thank you for contributing!")
+
+
+def _interruptible_sleep(seconds: float) -> None:
+    """Sleep that can be interrupted by shutdown signal."""
+    end = time.time() + seconds
+    while time.time() < end and not _shutdown_requested:
+        time.sleep(min(1.0, end - time.time()))
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -908,8 +1028,10 @@ CONSENT_TEXT = """
 ║  • Your IP address is NOT stored — only a SHA256 hash            ║
 ║    for deduplication                                             ║
 ║                                                                  ║
-║  • Your approximate location (country, city) is detected         ║
-║    once during registration for geographic attribution           ║
+║  • Country detection uses ipinfo.io (third-party). You can       ║
+║    skip this with VOIDLY_COUNTRY and VOIDLY_CITY env vars        ║
+║                                                                  ║
+║  • DNS tests query Cloudflare DoH to detect DNS poisoning        ║
 ║                                                                  ║
 ║  • No browsing data, passwords, or personal information          ║
 ║    is collected                                                  ║
@@ -966,6 +1088,8 @@ def main():
 
     # Override interval if specified
     if args.interval is not None:
+        if args.interval < 300:
+            print(f"  Note: minimum interval is 300s (5 min). Using 300s instead of {args.interval}s.")
         PROBE_INTERVAL = max(300, args.interval)  # Minimum 5 minutes
 
     # Unregister command
@@ -1026,6 +1150,15 @@ def main():
         print(f"\n  ** Keep {get_config_path()} safe — your token cannot be recovered! **")
         print(f"  Claim your node: https://voidly.ai/probes/claim\n")
 
+    # Risk advisory for high-censorship countries
+    HIGH_RISK_COUNTRIES = {"CN", "IR", "KP", "TM", "ER", "RU", "SA", "CU", "SY", "MM", "BY"}
+    node_country = config.get("country", "").upper()
+    if node_country in HIGH_RISK_COUNTRIES:
+        print("\n  \u26a0\ufe0f  RISK ADVISORY: You're in a high-censorship country.")
+        print("  Your ISP may be able to detect that you're running a censorship probe.")
+        print("  Consider running behind a VPN for additional protection.")
+        print("  Learn more: https://voidly.ai/probes#risks\n")
+
     # Run probes
     if args.once:
         print(f"Running single probe cycle ({PROBE_BATCH_SIZE} domains)...")
@@ -1042,7 +1175,12 @@ def main():
         try:
             probe_loop(config)
         except KeyboardInterrupt:
-            print("\n\nProbe stopped. Thank you for contributing!")
+            print("\n\n  Flushing pending results before exit...")
+            try:
+                flush_pending_results(config["nodeId"], config["country"], config["nodeToken"])
+            except Exception:
+                pass
+            print("  Probe stopped. Thank you for contributing!")
 
 
 if __name__ == "__main__":

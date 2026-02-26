@@ -2,9 +2,9 @@ from setuptools import setup
 
 setup(
     name="voidly-probe",
-    version="1.0.6",
+    version="1.0.11",
     description="Voidly Community Probe — Help measure internet censorship worldwide",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="Voidly",
     author_email="team@voidly.ai",
@@ -14,6 +14,8 @@ setup(
         "Documentation": "https://voidly.ai/api-docs",
         "Source": "https://github.com/voidly-ai/community-probe",
         "Bug Tracker": "https://github.com/voidly-ai/community-probe/issues",
+        "Security": "https://github.com/voidly-ai/community-probe/blob/main/SECURITY.md",
+        "Changelog": "https://github.com/voidly-ai/community-probe/blob/main/CHANGELOG.md",
     },
     py_modules=["voidly_probe"],
     python_requires=">=3.8",
