@@ -25,6 +25,8 @@ Results feed into [Voidly's censorship intelligence network](https://voidly.ai) 
 pip install voidly-probe
 ```
 
+> **Windows:** If `voidly-probe` is not recognized after install, use `python -m voidly_probe` instead.
+
 **Requirements:** Python 3.8+ · No external dependencies (stdlib only) · No root required · No VPN
 
 ## Quick start
@@ -32,6 +34,7 @@ pip install voidly-probe
 ```bash
 # First run — review consent and register
 voidly-probe --consent
+# Windows: python -m voidly_probe --consent
 
 # Run continuously (default: every 15 minutes)
 voidly-probe

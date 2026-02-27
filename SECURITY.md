@@ -46,8 +46,8 @@ We aim to respond within 48 hours and will work with you on a coordinated disclo
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.11  | ✅ Current |
-| 1.0.10  | ✅ Security fixes |
+| 1.0.12  | ✅ Current |
+| 1.0.11  | ✅ Security fixes |
 | < 1.0.8 | ❌ Please upgrade |
 
 ## Best Practices for Operators

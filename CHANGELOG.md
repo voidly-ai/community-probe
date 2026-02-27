@@ -2,6 +2,14 @@
 
 All notable changes to the Voidly Community Probe are documented here.
 
+## [1.0.12] - 2026-02-26
+
+### Fixed
+- **Windows PATH issue**: Added `python -m voidly_probe` instructions for Windows users whose Scripts folder isn't on PATH
+- Error messages now show Windows-friendly alternative command
+- README and website install instructions updated with Windows note
+- Fixed missing `--consent` flag in llms.txt install instructions
+
 ## [1.0.11] - 2026-02-26
 
 ### Security
