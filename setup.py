@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="voidly-probe",
-    version="1.0.11",
+    version="1.0.12",
     description="Voidly Community Probe — Help measure internet censorship worldwide",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

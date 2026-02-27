@@ -14,6 +14,7 @@ Usage:
     voidly-probe                    # Subsequent runs
     voidly-probe --once             # Single probe cycle then exit
     voidly-probe --status           # Show node status
+    python -m voidly_probe --consent  # Windows (if voidly-probe not on PATH)
 
 Learn more: https://voidly.ai/probes
 """
@@ -37,7 +38,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
 
 
-__version__ = "1.0.11"
+__version__ = "1.0.12"
 
 # ─── Graceful Shutdown ────────────────────────────────────────────────────────
 
@@ -1131,6 +1132,7 @@ def main():
             print(f"\nClaim your node: https://voidly.ai/probes/claim")
         else:
             print("Not registered. Run with --consent to register.")
+            print("  Windows: python -m voidly_probe --consent")
         return
 
     # Load or register
@@ -1140,7 +1142,10 @@ def main():
         if not args.consent:
             print(CONSENT_TEXT)
             print("To start probing, run:")
-            print("  voidly-probe --consent\n")
+            print("  voidly-probe --consent")
+            print("")
+            print("  Windows (if not recognized):")
+            print("  python -m voidly_probe --consent\n")
             return
 
         print("Registering with Voidly network...")
