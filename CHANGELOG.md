@@ -2,12 +2,18 @@
 
 All notable changes to the Voidly Community Probe are documented here.
 
+## [1.0.13] - 2026-02-26
+
+### Fixed
+- **Platform-agnostic PATH fix**: Changed all "Windows:" labels to generic wording — the PATH issue affects macOS/Linux too, not just Windows
+- Updated 7 locations across probe, README, website, and llms.txt
+
 ## [1.0.12] - 2026-02-26
 
 ### Fixed
-- **Windows PATH issue**: Added `python -m voidly_probe` instructions for Windows users whose Scripts folder isn't on PATH
-- Error messages now show Windows-friendly alternative command
-- README and website install instructions updated with Windows note
+- **PATH configuration issue**: Added `python -m voidly_probe` instructions for users whose pip Scripts/bin folder isn't on PATH
+- Error messages now show alternative command
+- README and website install instructions updated with PATH note
 - Fixed missing `--consent` flag in llms.txt install instructions
 
 ## [1.0.11] - 2026-02-26
