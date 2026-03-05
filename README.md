@@ -145,6 +145,31 @@ Environment variables:
 - Data is used for censorship research under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 - Learn more: [voidly.ai/probes](https://voidly.ai/probes)
 
+## Part of the Voidly Network
+
+Your probe contributes to a global censorship intelligence network:
+
+| Metric | Value |
+|--------|-------|
+| Total Samples | 16.9M |
+| Countries | 126 |
+| Probe Nodes | 39+ |
+| Verified Incidents | 351+ |
+| Total Measurements | 2.2B+ aggregated |
+
+**Other tools:**
+- [MCP Server](https://github.com/voidly-ai/mcp-server) — 83 tools for AI assistants (`npx @voidly/mcp-server`)
+- [Agent SDK](https://github.com/voidly-ai/agent-sdk) — E2E encrypted agent messaging (`npm install @voidly/agent-sdk`)
+- [Desktop Probe App](https://github.com/voidly-ai/voidly-probe-app) — GUI version (macOS, Windows, Linux)
+
+## Support Voidly
+
+Voidly is independently funded. If you find this useful, consider supporting continued development:
+
+- **ETH / Base**: `0x6E04f0c02A7838440FE9c0EB06C7556D66e00598` (ENS: `voidly.base.eth`)
+- **BTC**: `3QSHfnnFx4RZ8dDG1gL446zdEwqQXm1jpa`
+- **XMR**: `42k5Ps3nCjsaJWkZoycLaSZvJpEGjNfepJiBC2kbRtAzN62rpJUPymCQScrodAxD5hQ8YJMGhbtWGc9zjJbdcDBCLZoWzAa`
+
 ## Contributing
 
 Found a bug? Have a suggestion? [Open an issue](https://github.com/voidly-ai/community-probe/issues).
