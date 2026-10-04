@@ -1,179 +1,40 @@
 # Voidly Community Probe
 
-[![PyPI](https://img.shields.io/pypi/v/voidly-probe)](https://pypi.org/project/voidly-probe/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Docker](https://img.shields.io/docker/pulls/emperormew2/voidly-probe)](https://hub.docker.com/r/emperormew2/voidly-probe)
+Run a volunteer measurement client from your own network and contribute observations to [Voidly's censorship research](https://voidly.ai/probes). The probe makes outbound DNS, TLS, and HTTP checks to a target list. It is not a VPN, proxy, relay, or anonymity tool.
 
-Help measure internet censorship worldwide. Run a lightweight probe node from anywhere.
+**Read the [setup and consent guide](https://voidly.ai/probes/join) before starting.** Installing the package does not register a node or start measurements. Starting with `--consent` does both.
 
-## What it does
-
-Tests connectivity to **62 websites** (social media, news, messaging, privacy tools, human rights organizations) every 15 minutes from your network. Detects:
-
-- **DNS blocking** — NXDOMAIN, DNS poisoning (compared against Cloudflare DoH)
-- **TCP resets** — connection reset by peer
-- **TLS/SNI filtering** — Server Name Indication based blocking
-- **HTTP redirects** — government/ISP redirect to block pages
-- **Block page fingerprinting** — identifies 13 known blocking entities
-
-Results feed into [Voidly's censorship intelligence network](https://voidly.ai) — a real-time global censorship dataset used by researchers, journalists, and developers.
-
-## Install
+## Start the Python client
 
 ```bash
-pip install voidly-probe
-```
-
-> **Tip:** If `voidly-probe` is not recognized after install, use `python -m voidly_probe` instead.
-
-**Requirements:** Python 3.8+ · No external dependencies (stdlib only) · No root required · No VPN
-
-## Quick start
-
-```bash
-# First run — review consent and register
+python -m pip install voidly-probe
 voidly-probe --consent
-# Alternative: python -m voidly_probe --consent
-
-# Run continuously (default: every 15 minutes)
-voidly-probe
-
-# Single test cycle then exit
-voidly-probe --once
-
-# Check your node's status
-voidly-probe --status
-
-# Custom interval (minimum 300s / 5 min)
-voidly-probe --interval 600
-
-# Run in background (Linux/Mac)
-nohup voidly-probe --consent &
-
-# Stop contributing and remove config
-voidly-probe --unregister
 ```
 
-## Docker
+Other commands:
 
 ```bash
-# Run in background with persistent config
-docker run -d --name voidly-probe \
-  -v voidly-data:/data/.voidly \
-  emperormew2/voidly-probe:latest
-
-# View logs
-docker logs -f voidly-probe
-
-# Check node status
-docker exec voidly-probe voidly-probe --status
-
-# Find your Node ID (for claiming)
-docker exec voidly-probe cat /data/.voidly/node.json
-
-# Stop
-docker stop voidly-probe
+voidly-probe --once          # one measurement cycle, then exit
+voidly-probe --status        # read your node status
+voidly-probe --interval 600  # change the cycle interval
+voidly-probe --unregister    # remove the local identity file
 ```
 
-The Docker image auto-consents and starts probing immediately. Config persists across restarts via the volume mount.
+The client saves a node identity and token in `~/.voidly/node.json` by default. Keep that file private. Registration, a running process, and accepted measurements are separate events; check your node status and logs before assuming results were contributed. `--unregister` removes local configuration; it does not erase already submitted observations or revoke a remote token.
 
-## Claim your node
+The [Docker option and its persistent-volume behavior](https://voidly.ai/probes/join) are documented separately. The Docker launch command starts measurement immediately with consent.
 
-After your node is running, link your identity to appear on the [leaderboard](https://voidly.ai/probes) and be eligible for prizes:
+## What leaves your machine
 
-1. Find your Node ID and Token: `cat ~/.voidly/node.json`
-2. Visit [voidly.ai/probes/claim](https://voidly.ai/probes/claim)
-3. Enter your Node ID, Token, and Twitter/X handle
-4. Your name appears on the leaderboard instead of `cp-xxxxxxxx`
+- The checked-in client rotates through a built-in target list. An installed package can be a different revision, so inspect its target list before running. Your ISP and the tested services can observe the requests.
+- Submitted records can include the target, result, latency, blocking method, location, and time. A single node is one network vantage point, not a country-wide finding.
+- By default, registration contacts `ipinfo.io` to estimate country and city. Set `VOIDLY_COUNTRY` and, optionally, `VOIDLY_CITY` before registration to skip that lookup.
+- A location and measurement timeline may identify a node. Participation does not provide anonymity or a payment promise.
 
-> **Important:** Back up `~/.voidly/node.json` — your token is shown once during registration and cannot be recovered. If you lose it, you'll need to re-register as a new node.
+Read the [current data and consent details](https://voidly.ai/probes/join) and [methodology](https://voidly.ai/methodology). Voidly-original data and upstream measurements can have different license terms.
 
-## How it works
+## Source and support
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
-│  Your Node   │────▶│  api.voidly.ai │────▶│  Voidly Dataset  │
-│  (probe)     │     │  (HMAC auth)   │     │  (CC BY 4.0)     │
-└─────────────┘     └──────────────┘     └─────────────────┘
-     │                                           │
-     │  Tests 62 domains:                        │  Powers:
-     │  DNS · HTTP · TLS · SNI                   │  voidly.ai/probes
-     │  every 15 min                             │  Censorship Index
-     │                                           │  MCP Server
-     └───────────────────────────────────────────┘
-```
+The checked-in Python client is [`voidly_probe.py`](voidly_probe.py). Compare the source revision with the release you install from [PyPI](https://pypi.org/project/voidly-probe/) when reviewing client behavior; package and repository revisions can differ. Report bugs through [GitHub issues](https://github.com/voidly-ai/community-probe/issues). Report security issues using [SECURITY.md](SECURITY.md).
 
-Each probe cycle:
-1. **DNS resolution** — checks if the domain resolves, compares against DoH
-2. **HTTP/HTTPS request** — tests connectivity, checks for redirects
-3. **Block page detection** — fingerprints known government/ISP block pages
-4. **TLS/SNI probing** — tests for SNI-based filtering
-5. **Certificate fingerprinting** — detects MITM certificate injection
-6. **Results signed** with HMAC-SHA256 and reported to the API
-
-Failed submissions are **cached locally** and retried next cycle — no data loss even with spotty connectivity.
-
-## Configuration
-
-Environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VOIDLY_PROBE_INTERVAL` | `900` | Seconds between probe cycles |
-| `VOIDLY_PROBE_TIMEOUT` | `10` | Timeout per request (seconds) |
-| `VOIDLY_BATCH_SIZE` | `20` | Domains per cycle |
-| `VOIDLY_CONFIG_DIR` | `~/.voidly` | Config directory |
-| `VOIDLY_API_URL` | `https://api.voidly.ai` | API endpoint (for development) |
-
-## Privacy
-
-### What we collect
-- Domain, blocked/accessible status, latency, blocking method
-- Your approximate location (country, city) — detected once during registration
-- SHA256 hash of your IP (for deduplication — raw IP never stored)
-
-### What we don't collect
-- No browsing data
-- No passwords or personal information
-- No traffic inspection beyond the 62 test domains
-- Your raw IP address is never stored
-
-### Your rights
-- Stop the probe at any time with Ctrl+C
-- Run `voidly-probe --unregister` to remove your config
-- Data is used for censorship research under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
-- Learn more: [voidly.ai/probes](https://voidly.ai/probes)
-
-## Part of the Voidly Network
-
-Your probe contributes to a global censorship intelligence network:
-
-| Metric | Value |
-|--------|-------|
-| Total Samples | 16.9M |
-| Countries | 126 |
-| Probe Nodes | 39+ |
-| Verified Incidents | 351+ |
-| Total Measurements | 2.2B+ aggregated |
-
-**Other tools:**
-- [MCP Server](https://github.com/voidly-ai/mcp-server) — 83 tools for AI assistants (`npx @voidly/mcp-server`)
-- [Agent SDK](https://github.com/voidly-ai/agent-sdk) — E2E encrypted agent messaging (`npm install @voidly/agent-sdk`)
-- [Desktop Probe App](https://github.com/voidly-ai/voidly-probe-app) — GUI version (macOS, Windows, Linux)
-
-## Support Voidly
-
-Voidly is independently funded. If you find this useful, consider supporting continued development:
-
-- **ETH / Base**: `0x6E04f0c02A7838440FE9c0EB06C7556D66e00598` (ENS: `voidly.base.eth`)
-- **BTC**: `3QSHfnnFx4RZ8dDG1gL446zdEwqQXm1jpa`
-- **XMR**: `42k5Ps3nCjsaJWkZoycLaSZvJpEGjNfepJiBC2kbRtAzN62rpJUPymCQScrodAxD5hQ8YJMGhbtWGc9zjJbdcDBCLZoWzAa`
-
-## Contributing
-
-Found a bug? Have a suggestion? [Open an issue](https://github.com/voidly-ai/community-probe/issues).
-
-## License
-
-[MIT](LICENSE) — [voidly.ai](https://voidly.ai)
+Code license: [MIT](LICENSE).
