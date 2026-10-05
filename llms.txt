@@ -1,0 +1,17 @@
+# Voidly Community Probe
+
+> An opt-in volunteer measurement client. Running it with `--consent` registers a node and starts outbound DNS, TLS, and HTTP checks from the owner's network. It is not an MCP server, VPN, proxy, or anonymity tool.
+
+## Documentation
+
+- [README and consent overview](https://github.com/voidly-ai/community-probe/blob/main/README.md): install, commands, data leaving the machine, and limits.
+- [Setup and consent guide](https://voidly.ai/probes/join): current enrollment and Docker setup.
+- [Probe source](https://github.com/voidly-ai/community-probe/blob/main/voidly_probe.py): checked-in client behavior; an installed package may be a different revision.
+- [Security policy](https://github.com/voidly-ai/community-probe/blob/main/SECURITY.md): vulnerability reporting.
+- [Atlas methodology](https://voidly.ai/methodology): measurement interpretation.
+
+## Read-only MCP access
+
+- [Voidly Atlas MCP server](https://github.com/voidly-ai/atlas-mcp) is a separate connector for Atlas evidence. Its dedicated hosted Streamable HTTP endpoint is `https://atlas-mcp.voidly.ai/mcp`.
+
+Connecting to Atlas MCP does not enroll a probe. Installing this client does not start measurements; running with `--consent` does. A single node is one network vantage point, not a country-wide result.
