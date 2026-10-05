@@ -1,5 +1,7 @@
 # Voidly Community Probe
 
+[![PyPI version](https://img.shields.io/pypi/v/voidly-probe.svg)](https://pypi.org/project/voidly-probe/)
+
 Run a volunteer measurement client from your own network and contribute observations to [Voidly's censorship research](https://voidly.ai/probes). The probe makes outbound DNS, TLS, and HTTP checks to a target list. It is not a VPN, proxy, relay, or anonymity tool.
 
 **Read the [setup and consent guide](https://voidly.ai/probes/join) before starting.** Installing the package does not register a node or start measurements. Starting with `--consent` does both.
