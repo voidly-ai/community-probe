@@ -40,6 +40,16 @@ The checked-in Python client is [`voidly_probe.py`](voidly_probe.py). Compare th
 Code license: [MIT](LICENSE).
 
 
+## MCP clients
+
+This volunteer client measures from the network where its owner runs it; it
+is not an MCP server. For read-only Atlas evidence in Cursor, VS Code, or
+another MCP client, use the separate
+[Voidly Atlas MCP server](https://github.com/voidly-ai/atlas-mcp). Its dedicated
+hosted Streamable HTTP endpoint is `https://atlas-mcp.voidly.ai/mcp`.
+Connecting to Atlas MCP does not register or start a volunteer probe.
+
+
 ## Trademarks
 
 Voidly™ and Voidpay™ are trademarks of Ai Analytics LLC. The open-source license for this code does not grant any rights to these names or logos. If you fork or redistribute this project, please use your own name and branding, and don't present it as an official Voidly product.
