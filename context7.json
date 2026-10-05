@@ -1,0 +1,12 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Voidly Community Probe",
+  "description": "Opt-in volunteer DNS, TLS, and HTTP measurement client. Participation exposes measurement and location metadata; this project is not an MCP server, VPN, or anonymity tool.",
+  "excludeFolders": [
+    ".github",
+    "__pycache__"
+  ],
+  "excludeFiles": [
+    "CHANGELOG.md"
+  ]
+}
