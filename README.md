@@ -38,3 +38,8 @@ Read the [current data and consent details](https://voidly.ai/probes/join) and [
 The checked-in Python client is [`voidly_probe.py`](voidly_probe.py). Compare the source revision with the release you install from [PyPI](https://pypi.org/project/voidly-probe/) when reviewing client behavior; package and repository revisions can differ. Report bugs through [GitHub issues](https://github.com/voidly-ai/community-probe/issues). Report security issues using [SECURITY.md](SECURITY.md).
 
 Code license: [MIT](LICENSE).
+
+
+## Trademarks
+
+Voidly™ and Voidpay™ are trademarks of Ai Analytics LLC. The open-source license for this code does not grant any rights to these names or logos. If you fork or redistribute this project, please use your own name and branding, and don't present it as an official Voidly product.
